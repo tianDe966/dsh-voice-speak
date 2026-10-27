@@ -1,0 +1,6 @@
+# dsh-voice-speak bundle layer: one loader row — the agent-facing `say` tool plus
+# its `voice-speak` system-prompt section, both registered by the plugin entry.
+# Install with: dsh plugin --profile web add link:<absolute path to this repo>
+- insert:
+    - id: tool-voice-speak
+      name: dsh-voice-speak
