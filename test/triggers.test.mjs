@@ -3,12 +3,13 @@ import assert from 'node:assert/strict'
 import { createSpeechTriggers } from '../lib/triggers.js'
 
 /** A controller with a controllable clock and a speech spy. */
-function mount() {
+function mount({ silenced = false } = {}) {
   let clock = 1_000_000
   const spoken = []
   const triggers = createSpeechTriggers({
     speak: (text) => spoken.push(text),
     now: () => clock,
+    isSilenced: () => silenced,
   })
   return {
     triggers,
@@ -146,5 +147,22 @@ test('teardown settlements are ignored', () => {
   triggers.onJobSettled({
     jobId: 'j5', startedAt: 1_000_000, finishedAt: 1_100_000, status: 'killed', cause: 'teardown',
   })
+  assert.deepEqual(spoken, [])
+})
+
+test('remote mode silences every automatic line', () => {
+  const { triggers, spoken, advance } = mount({ silenced: true })
+  triggers.onTurnStart('s1')
+  triggers.onToolCall('s1')
+  triggers.onToolCall('s1')
+  advance(130_000)
+  triggers.onTurnEnd('s1', { kind: 'completed' })
+  triggers.onTurnEnd('s1', { kind: 'error' })
+  triggers.onApproval('s1', { id: 'a1' })
+  triggers.onAsk('s1', { callId: 'c1' })
+  triggers.onJobSettled({
+    jobId: 'j6', startedAt: 1_000_000, finishedAt: 1_100_000, status: 'completed', cause: 'producer',
+  })
+  triggers.noteSpoken()
   assert.deepEqual(spoken, [])
 })

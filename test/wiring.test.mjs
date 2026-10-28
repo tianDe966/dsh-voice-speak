@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { apply, name } from '../lib/index.js'
 
 /** Load the plugin against a fake cordis context and capture speech. */
-function mount() {
+function mount({ isSilenced = () => false } = {}) {
   const spoken = []
   const handlers = new Map()
   let tool
@@ -44,7 +44,7 @@ function mount() {
       return { warn() {} }
     },
   }
-  apply(ctx, { speak: (text) => spoken.push(text) })
+  apply(ctx, { speak: (text) => spoken.push(text), isSilenced })
   return {
     spoken,
     tool,
@@ -123,6 +123,16 @@ test('a normal message clears the automation marker', () => {
   m.emit({ type: 'user/message', data: { source: { kind: 'user' } } })
   m.emit({ type: 'approval/asked', data: { id: 'a3' } })
   assert.deepEqual(m.spoken, ['老大，有个操作要你批一下。'])
+})
+
+test('remote mode silences say and automatic alerts', async () => {
+  const m = mount({ isSilenced: () => true })
+  await m.tool.execute({ text: '老大，测试。' })
+  m.emit({ type: 'approval/asked', data: { id: 'a1' } })
+  m.emit({ type: 'tool/call', data: { name: 'ask_user_question', callId: 'c1' } })
+  m.emit({ type: 'turn/start', data: { turn: 1 } })
+  m.emit({ type: 'turn/end', data: { turn: 1, reason: { kind: 'error' } } })
+  assert.deepEqual(m.spoken, [])
 })
 
 test('long unawaited job settlement speaks', () => {
