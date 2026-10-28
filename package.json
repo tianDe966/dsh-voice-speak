@@ -12,6 +12,9 @@
     "lib/",
     "cordis.patch.yml"
   ],
+  "scripts": {
+    "test": "node --test"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
