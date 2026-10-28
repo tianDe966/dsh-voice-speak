@@ -1,7 +1,7 @@
 {
   "name": "dsh-voice-speak",
   "version": "3.1.1",
-  "description": "DeepSeek Harness plugin: an agent-facing say tool that speaks one sentence out loud (Windows System.Speech, zero dependency) plus the prompt section that decides when to speak.",
+  "description": "DeepSeek Harness plugin: an agent-facing say tool that makes the agent speak one sentence out loud (local offline Xiaoxiao, Edge TTS, or Windows built-in), plus a desktop bubble and event-driven auto announcements.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -10,7 +10,11 @@
   },
   "files": [
     "lib/",
-    "cordis.patch.yml"
+    "test/",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "test": "node --test"
@@ -23,12 +27,27 @@
   "engines": {
     "node": ">=20"
   },
+  "os": [
+    "win32"
+  ],
   "keywords": [
     "dsh",
     "dsh-plugin",
     "deepseek-harness",
     "tts",
-    "voice"
+    "voice",
+    "speech",
+    "say",
+    "windows"
   ],
-  "license": "MIT"
+  "author": "tianshan123 <326958984+tianDe966@users.noreply.github.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tianDe966/dsh-voice-speak.git"
+  },
+  "homepage": "https://github.com/tianDe966/dsh-voice-speak#readme",
+  "bugs": {
+    "url": "https://github.com/tianDe966/dsh-voice-speak/issues"
+  }
 }
