@@ -1,6 +1,6 @@
 {
   "name": "dsh-voice-speak",
-  "version": "0.1.0",
+  "version": "3.1.1",
   "description": "DeepSeek Harness plugin: an agent-facing say tool that speaks one sentence out loud (Windows System.Speech, zero dependency) plus the prompt section that decides when to speak.",
   "type": "module",
   "main": "lib/index.js",
