@@ -207,7 +207,7 @@ node --test        # 26 项：触发判定 + 事件接线，不需要出声
 - **[rany2/edge-tts](https://github.com/rany2/edge-tts)** 与其中的 [Sec-MS-GEC v2 分析（PR #492）](https://github.com/rany2/edge-tts/pull/492)——`lib/edge.js` 的 token 生成与重试策略来自社区对 Edge「朗读」协议的公开研究（代码为独立零依赖实现，非直接移植）
 - **`msedge-tts`**（npm）——早期验证协议可用性时用作对照
 - **微软「晓晓」自然语音**——音色属于 Microsoft，本插件只做调用
-- 本机 [dsh-plugin-photoshop](https://github.com/deepseek-ai) 插件——`say` 的工具定义写法参照了它的 registry-ready 结构
+- **本机 `dsh-plugin-photoshop`**（本地插件，非本仓库）——`say` 的 registry-ready 工具定义写法参照了它的 `lib/tool.js`
 
 ## 许可
 
