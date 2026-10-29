@@ -4,6 +4,30 @@
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-10-29
+
+### Changed
+
+- **三条引擎都改走常驻进程与同一音频端点**：`sapi` 不再每句 spawn 一个 PowerShell 直连音频设备，改为由常驻 worker 合成到 24 kHz/16-bit/单声道 WAV 再写进同一个 `waveOut`；`edge` 的 MP3 也不再由每句一个 MCI 子进程播放，改由常驻 worker 在进程内 `mciSendString` 播放。只有常驻进程完全起不来时才回落到老路径。
+- **静音 keep-alive 撑住端点**：Edge 播 MP3 期间由 worker 另开一路循环静音流（1 s 静音 WAV，`play … repeat`），并在 MCI 报播完后再撑 500 ms 才停。原因同上：A2DP 在端点空闲或流关闭的瞬间丢缓冲，撑住端点就不丢。
+- 播放格式统一为 24 kHz：本地晓晓与内置语音都渲染成 `SpeechAudioFormatInfo(24000, Sixteen, Mono)`，设备只按这个格式开一次。
+
+### Fixed
+
+- Edge 兜底路径在蓝牙耳机下的句尾截断：3.2.0 只修了本地语音，云端与内置路径仍是每句开流，现已覆盖。
+
+### Verified
+
+- `node --test --test-isolation=none` 30/30；三条引擎各说一句的日志：
+  - `engine=local voice=Xiaoxiao … audio_ms=2062 play_ms=3610 OK`
+  - `engine=edge voice=zh-CN-XiaoxiaoNeural … synth_ms=1958 play_ms=5993 OK`
+  - `engine=sapi device=resident voice=default audio_ms=2062 play_ms=3346 OK`
+
+### Known limitations
+
+- 蓝牙下的人耳确认还没做：日志只能证明路径跑通，不能证明句尾听感完整。
+- keep-alive 假设端点确实走同一个设备；装了按应用分路的音频路由软件时仍可能被截。
+
 ## [3.2.1] - 2026-10-29
 
 ### Added
