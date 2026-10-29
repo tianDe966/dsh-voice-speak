@@ -17,7 +17,9 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:sandbox": "node --test --test-isolation=none",
+    "prepublishOnly": "npm run test:sandbox"
   },
   "dsh": {
     "bundle": {
