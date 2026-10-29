@@ -37,17 +37,17 @@
 
 插件通过 profile 的 pnpm 管理，`dsh plugin` 会把参数转发给该 profile 目录下的 pnpm。
 
-**从 npm 安装：**
-
-```sh
-dsh plugin --profile web add dsh-voice-speak
-```
-
-**从本地目录安装（开发或未发布时）：**
+**从本地目录安装（当前唯一可用方式，插件尚未发布到 npm）：**
 
 ```sh
 git clone https://github.com/tianDe966/dsh-voice-speak.git
-dsh plugin --profile web add link:D:/path/to/dsh-voice-speak/dsh-voice-speak
+dsh plugin --profile web add link:D:/path/to/dsh-voice-speak
+```
+
+**从 npm 安装（发布后可用）：**
+
+```sh
+dsh plugin --profile web add dsh-voice-speak
 ```
 
 **确认装上了：**
