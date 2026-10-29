@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-10-29
+
+### Added
+
+- `say` 静默时可观测：远程模式标记存在时仍写一行日志（`say 已静默（remote-mode 标记存在，未出声）：…`），返回 `{ status: 'muted', text }`，`render` 显示「已静默（远程模式），没有出声」。
+- 静默自动解除：桌面端收到用户消息（`source.kind` 不是 `schedule`、会话 `cwd` 不在微信通道工作区）即删除 `~/.dsh/rules/remote-mode.on`，并记一行「remote-mode 标记已自动解除」。人回到电脑前不再需要谁记得调 `set_remote_mode(false)`。
+
+### Fixed
+
+- 远程模式忘记关闭后表现为「永远无声、无日志、返回值仍说已播报」。微信会话的回合与官方定时任务不会误解除静默。
+
 ## [3.2.0] - 2026-10-29
 
 ### Added

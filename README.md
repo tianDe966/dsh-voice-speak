@@ -74,7 +74,7 @@ Get-Content (Join-Path $env:TEMP 'dsh-voice-speak.log') -Tail 5
 
 ### AI 侧：一个工具
 
-模型调用 `say({ text }): { status: 'queued', text }`。返回值只表示「已交给播报」，语音在后台说完，任务不等它。
+模型调用 `say({ text }): { status: 'queued' | 'muted', text }`。`queued` 表示「已交给播报」，语音在后台说完，任务不等它；`muted` 表示当前处于远程模式静默，这句没有出声（会写一行日志），不要当成已经播过。
 
 ### 什么时候开口
 
@@ -156,7 +156,7 @@ engine=local|edge|sapi voice=… pitch=… rate=… len=… audio_ms=… play_ms
 1. 日志最后一行是否 `OK`。有 `play_ms=… OK` 说明语音已送到默认输出设备，问题在系统侧（输出设备选错、音量静音、应用音量）。
 2. `ERR read ECONNRESET` 是 Edge 云端被重置，插件会自动重试并回落，声音通常仍出。
 3. `engine=local … UNAVAILABLE` 表示没找到本地晓晓，已回落 Edge——想用离线音色就按上面的「可选」重装。
-4. 日志里**完全没有新行**但 `say` 返回成功：先查远程模式标记 `~/.dsh/rules/remote-mode.on` 是否存在——存在即静默，既不播也不写日志（返回值是固定文案，不能当「播了」的证据）。
+4. `say` 返回 `status: 'muted'`：说明远程模式标记 `~/.dsh/rules/remote-mode.on` 存在，这句被静默，日志里有一行 `say 已静默（remote-mode 标记存在，未出声）`。**桌面端收到一条用户消息会自动删掉该标记**（微信会话的回合不算），所以人回到电脑前说话、语音就恢复，不需要谁记得关远程模式。
 5. `audio_ms` 是渲染出的音频真实时长，`play_ms` 是子进程总耗时（含渲染与排队），两者差 1–2 秒属正常。
 
 **句尾被截**（最后一个字像被挂电话）：3.1.2 及以前只发生在蓝牙耳机（A2DP）下——A2DP 在应用关闭音频流时会丢弃耳机端未播完的缓冲。3.2.0 起本地语音改为常驻播放进程，整轮不关流，蓝牙与外放都已实测完整。若升级后仍被截：
@@ -181,7 +181,7 @@ engine=local|edge|sapi voice=… pitch=… rate=… len=… audio_ms=… play_ms
 如果你会把电脑扔下不管、改用手机或微信继续对话，建议同时安装配套插件 **`dsh-remote-notify`**：
 
 - `send_email`：阶段性汇报直接发到邮箱（SMTP 自填，收件人固定）
-- `set_remote_mode`：进入远程模式后语音自动静默、不再打断你；回到本地再关掉
+- `set_remote_mode`：进入远程模式后语音自动静默、不再打断你；回到本地时手动关掉，或直接发一条桌面消息——插件会把标记自动解除
 
 两者配合的效果是：**你在电脑前 → 用声音喊你；你不在电脑前 → 不吵，改用邮件与微信**。单装 `dsh-voice-speak` 完全可用，只是少了这层"人不在"的切换。
 
@@ -189,7 +189,7 @@ engine=local|edge|sapi voice=… pitch=… rate=… len=… audio_ms=… play_ms
 
 ```sh
 cd dsh-voice-speak
-node --test        # 26 项：触发判定 + 事件接线，不需要出声
+node --test        # 30 项：触发判定 + 事件接线 + 静默路径，不需要出声
 ```
 
 纯 ESM、无构建步骤、无第三方依赖。目录：

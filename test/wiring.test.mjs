@@ -1,9 +1,17 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { apply, name } from '../lib/index.js'
 
-/** Load the plugin against a fake cordis context and capture speech. */
-function mount({ isSilenced = () => false } = {}) {
+/**
+ * Load the plugin against a fake cordis context and capture speech.
+ *
+ * The marker path defaults to a fresh temp file so no test can ever touch the
+ * real `~/.dsh/rules/remote-mode.on`.
+ */
+function mount({ isSilenced, markerPath, wechatWorkspace } = {}) {
   const spoken = []
   const handlers = new Map()
   let tool
@@ -44,11 +52,20 @@ function mount({ isSilenced = () => false } = {}) {
       return { warn() {} }
     },
   }
-  apply(ctx, { speak: (text) => spoken.push(text), isSilenced })
+  const marker = markerPath ?? join(mkdtempSync(join(tmpdir(), 'voice-speak-')), 'remote-mode.on')
+  const options = { speak: (text) => spoken.push(text), markerPath: marker }
+  if (isSilenced !== undefined) options.isSilenced = isSilenced
+  if (wechatWorkspace !== undefined) options.wechatWorkspace = wechatWorkspace
+  apply(ctx, options)
   return {
     spoken,
     tool,
     section,
+    markerPath: marker,
+    /** Enter remote mode the way `set_remote_mode` does. */
+    arm() {
+      writeFileSync(marker, 'enabled\n', 'utf8')
+    },
     emit(event) {
       handlers.get('session/event')({ id: 's1', header: {} }, event)
     },
@@ -60,6 +77,13 @@ function mount({ isSilenced = () => false } = {}) {
     },
   }
 }
+
+/** A desktop session, i.e. this GUI. */
+const DESKTOP = { id: 's1', header: { cwd: 'D:/DSH_Project/plugin01' } }
+/** A session the WeChat channel created, i.e. a phone turn. */
+const WECHAT = { id: 'w1', header: { cwd: 'C:/Users/someone/.dsh/dsh_wechat' } }
+const userMessage = { type: 'user/message', data: { source: { kind: 'user' } } }
+const scheduledMessage = { type: 'user/message', data: { source: { kind: 'schedule' } } }
 
 test('plugin registers the say tool and the prompt section', () => {
   const m = mount()
@@ -126,13 +150,52 @@ test('a normal message clears the automation marker', () => {
 })
 
 test('remote mode silences say and automatic alerts', async () => {
-  const m = mount({ isSilenced: () => true })
-  await m.tool.execute({ text: '老大，测试。' })
+  const m = mount()
+  m.arm()
+  const result = await m.tool.execute({ text: '老大，测试。' })
   m.emit({ type: 'approval/asked', data: { id: 'a1' } })
   m.emit({ type: 'tool/call', data: { name: 'ask_user_question', callId: 'c1' } })
   m.emit({ type: 'turn/start', data: { turn: 1 } })
   m.emit({ type: 'turn/end', data: { turn: 1, reason: { kind: 'error' } } })
   assert.deepEqual(m.spoken, [])
+  assert.deepEqual(result, { status: 'muted', text: '老大，测试。' })
+  assert.deepEqual(m.tool.output.render({}, result), [
+    { type: 'text', text: '已静默（远程模式），没有出声' },
+  ])
+})
+
+test('a desktop message releases a stale remote-mode marker', async () => {
+  const m = mount()
+  m.arm()
+  m.emitFrom(DESKTOP, userMessage)
+  assert.equal(existsSync(m.markerPath), false)
+  // Voice is back for the same turn, without anyone remembering to switch.
+  const result = await m.tool.execute({ text: '老大，回来了。' })
+  assert.deepEqual(result, { status: 'queued', text: '老大，回来了。' })
+  assert.deepEqual(m.spoken, ['老大，回来了。'])
+})
+
+test('a WeChat message keeps the remote-mode marker', () => {
+  const m = mount()
+  m.arm()
+  m.emitFrom(WECHAT, userMessage)
+  assert.equal(existsSync(m.markerPath), true)
+})
+
+test('a scheduled message keeps the remote-mode marker', () => {
+  const m = mount()
+  m.arm()
+  m.emitFrom(DESKTOP, scheduledMessage)
+  assert.equal(existsSync(m.markerPath), true)
+})
+
+test('a custom WeChat workspace still keeps the marker', () => {
+  const m = mount({ wechatWorkspace: 'D:/wechat-sessions' })
+  m.arm()
+  m.emitFrom({ id: 'w2', header: { cwd: 'D:/wechat-sessions' } }, userMessage)
+  assert.equal(existsSync(m.markerPath), true)
+  m.emitFrom(DESKTOP, userMessage)
+  assert.equal(existsSync(m.markerPath), false)
 })
 
 test('long unawaited job settlement speaks', () => {
