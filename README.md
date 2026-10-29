@@ -6,7 +6,7 @@
 
 - **零第三方依赖**，纯 ESM JavaScript，无构建步骤
 - **仅 Windows**（语音与桌面气泡都依赖系统能力）
-- 本版本：`3.1.1`
+- 本版本：`3.3.0`（版本演进见 [CHANGELOG.md](CHANGELOG.md)）
 
 ---
 
@@ -37,17 +37,17 @@
 
 插件通过 profile 的 pnpm 管理，`dsh plugin` 会把参数转发给该 profile 目录下的 pnpm。
 
-**从本地目录安装（当前唯一可用方式，插件尚未发布到 npm）：**
+**从 npm 安装：**
+
+```sh
+dsh plugin --profile web add dsh-voice-speak
+```
+
+**从本地目录安装（开发、或想跟 main 分支）：**
 
 ```sh
 git clone https://github.com/tianDe966/dsh-voice-speak.git
 dsh plugin --profile web add link:D:/path/to/dsh-voice-speak
-```
-
-**从 npm 安装（发布后可用）：**
-
-```sh
-dsh plugin --profile web add dsh-voice-speak
 ```
 
 **确认装上了：**

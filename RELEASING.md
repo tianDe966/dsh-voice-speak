@@ -63,8 +63,9 @@ git push publish v<版本>
 
 然后做静态备份 `D:\DSH_Project\backup\dsh-voice-speak-V<版本>`（插件目录、`经验库/`、`.gitattributes`、`.gitignore`、`VERSION.md`）。
 
-## D. 发布前最容易漏的三件事
+## D. 发布前最容易漏的四件事
 
 1. **`package.json` 首字节必须是 `{`**：PowerShell 的 `Set-Content -Encoding UTF8` 会写 BOM，DSH 加载会整包跳过；改完用 `dsh --profile web --dump-config | findstr tool-voice-speak` 验一次。
-2. **`experience`/经验库与 README 的版本号要同步**：CHANGELOG 顶部加新版本段。
+2. **README 顶部的「本版本：`x.y.z`」要手改**：它不读 `package.json`，2026-10-29 就因为漏改被用户在 GitHub 上看到 `3.1.1`；CHANGELOG 顶部也要加新版本段。
 3. **标签打在新提交上**：subtree split 之后再打标签，否则远端标签指向旧树。
+4. **npm 首次发布**：先 `npm whoami` 确认登录态（未登录报 `ENEEDAUTH`），再 `npm publish`；`prepublishOnly` 会自动跑测试。
