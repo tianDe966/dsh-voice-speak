@@ -148,7 +148,7 @@ Get-Content (Join-Path $env:TEMP 'dsh-voice-speak.log') -Tail 5
 诊断日志按句一行，写在 `%TEMP%\dsh-voice-speak.log`：
 
 ```
-engine=local|edge|sapi voice=… pitch=… rate=… len=… synth_ms=… play_ms=… OK|ERR
+engine=local|edge|sapi voice=… pitch=… rate=… len=… audio_ms=… play_ms=… OK|ERR
 ```
 
 **完全没声音**，按顺序看：
@@ -156,7 +156,10 @@ engine=local|edge|sapi voice=… pitch=… rate=… len=… synth_ms=… play_ms
 1. 日志最后一行是否 `OK`。有 `play_ms=… OK` 说明语音已送到默认输出设备，问题在系统侧（输出设备选错、音量静音、应用音量）。
 2. `ERR read ECONNRESET` 是 Edge 云端被重置，插件会自动重试并回落，声音通常仍出。
 3. `engine=local … UNAVAILABLE` 表示没找到本地晓晓，已回落 Edge——想用离线音色就按上面的「可选」重装。
-4. 日志里没有任何新行，说明这次没有真正调用 `say`，或插件没挂载（先查 `--dump-config`）。
+4. 日志里**完全没有新行**但 `say` 返回成功：先查远程模式标记 `~/.dsh/rules/remote-mode.on` 是否存在——存在即静默，既不播也不写日志（返回值是固定文案，不能当「播了」的证据）。
+5. `audio_ms` 是渲染出的音频真实时长，`play_ms` 是子进程总耗时（含渲染与排队），两者差 1–2 秒属正常。
+
+**句尾被截**（最后一个字像被挂电话）：只发生在蓝牙耳机（A2DP）下。A2DP 在应用关闭音频流时会丢弃耳机端未播完的缓冲，补静音、延长等待都无效。切到内置扬声器或有线输出即可完整；根治方案（常驻播放进程）排在 3.2.0。
 
 ## 已知限制
 
@@ -167,6 +170,7 @@ engine=local|edge|sapi voice=… pitch=… rate=… len=… synth_ms=… play_ms
 5. **云端协议是外部依赖**：微软改接口时云端路径可能失效，届时自动回落内置语音，功能不断
 6. **气泡比首声早约 1–1.5 秒**：气泡在调用瞬间出现，语音要先合成
 7. **自动播报阈值偏保守**：长轮 120 s / 长任务 90 s / 静默窗 30–45 s，可按实际体感再调
+8. **蓝牙耳机下句尾会被截断**：A2DP 链路行为，非插件可控；内置扬声器与有线输出正常（详见「日志与排错」）
 
 ## 搭配推荐：dsh-remote-notify
 
