@@ -50,6 +50,13 @@ git clone https://github.com/tianDe966/dsh-voice-speak.git
 dsh plugin --profile web add link:D:/path/to/dsh-voice-speak
 ```
 
+> 如果 `dsh plugin ... add dsh-voice-speak` 卡住没反应（个别网络环境下见过，pnpm 在 profile 里拉包时会一直等），改用 tarball 这条路，能绕过 profile 的依赖解析：
+>
+> ```sh
+> npm pack dsh-voice-speak --pack-destination D:/tmp
+> dsh plugin --profile web add file:D:/tmp/dsh-voice-speak-3.3.0.tgz
+> ```
+
 **确认装上了：**
 
 ```sh
