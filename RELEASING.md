@@ -16,19 +16,28 @@
 - 仓库只含插件本体（`lib/`、`test/`、`README`、`CHANGELOG`、`LICENSE`、`cordis.patch.yml`、`package.json`）。
 - 不含 `~/.dsh/remote-notify.json`（QQ 授权码）、不含 `D:\DSH_Project\TTS` 语音资产、不含个人路径（`.gitignore` 已排除 `_probe/`、`*.log`）。
 
-## B. npm 发布（需要本人登录）
+## B. npm 发布（**由本人手动执行**，模型只准备命令）
 
-当前 `npm whoami` 报 `ENEEDAUTH`，没有登录态。
+本机 npm 已有网页授权的登录态，`npm publish` **不需要输验证码**（2026-10-29 实测两次）。不要再去创建「Bypass 2FA」的 granular token——npm 正在弃用这类 token，用它会失败或只把版本挂起（见经验库 2026-10-29 条目）。
 
-1. 本机执行 `npm login`（浏览器授权或账号密码 + 2FA 验证码）。
-2. 我这边先跑一遍预检：
-   ```sh
-   cd D:\DSH_Project\plugin01\dsh-voice-speak
-   npm pack --dry-run        # 预期 14 文件 / ~42 kB
-   node --test --test-isolation=none   # 预期 35/35
-   ```
-3. 登录完成后我执行 `npm publish`（包名 `dsh-voice-speak`，2026-10-29 查过未被占用）。
-4. 发布后校验：`npm view dsh-voice-speak version` 与 `npm install dsh-voice-speak` 装到干净目录再 `import` 出 `apply,inject,name`。
+**模型负责**：改版本号、同步 README/CHANGELOG、跑测试与打包预检、给出下面这段可直接粘贴的命令、发布后回查 registry。
+
+**本人负责**：在 cmd 里执行（模型会在发布前把版本号填好）：
+
+```bat
+cd /d D:\DSH_Project\plugin01\dsh-voice-speak
+npm publish --access public
+```
+
+发布完成后告诉模型一声，模型会复核：
+
+```powershell
+$env:npm_config_cache = "D:\DSH_Project\plugin01\_probe\tmp\npm-cache"
+npm view dsh-voice-speak versions --json --prefer-online
+npm view dsh-voice-speak dist-tags --json --prefer-online
+```
+
+**别只看输出里的 "Published" 字样**：2026-10-29 出现过「输出像成功、registry 其实没有这个版本」的情况，必须回查 `versions` 与 `dist-tags`。
 
 ## B2. 可安装性自检（2026-10-29 实跑通过，任何一次发版后都可复跑）
 
