@@ -30,6 +30,26 @@
 3. 登录完成后我执行 `npm publish`（包名 `dsh-voice-speak`，2026-10-29 查过未被占用）。
 4. 发布后校验：`npm view dsh-voice-speak version` 与 `npm install dsh-voice-speak` 装到干净目录再 `import` 出 `apply,inject,name`。
 
+## B2. 可安装性自检（2026-10-29 实跑通过，任何一次发版后都可复跑）
+
+用临时 profile，不碰日常用的 `web` profile：
+
+```sh
+# 1) 文档里的安装命令（本地 clone + link）
+git clone <仓库地址> _probe/tmp/scratch/repo
+dsh plugin --profile scratchprobe add link:D:/.../\_probe/tmp/scratch/repo
+dsh --profile scratchprobe --dump-config | findstr tool-voice-speak   # 必须有 - id: tool-voice-speak
+
+# 2) npm tarball 路线（发布 npm 之前也能验）
+npm pack --pack-destination _probe/tmp/tgz
+dsh plugin --profile scratchprobe2 add file:D:/.../\_probe/tmp/tgz/dsh-voice-speak-<版本>.tgz
+dsh --profile scratchprobe2 --dump-config | findstr tool-voice-speak
+
+# 3) 收尾：删掉临时 profile 与临时目录
+```
+
+实测结论（2026-10-29）：两条路线都出现 `- id: tool-voice-speak`，说明「陌生人照 README 能装」这条最低验收标准已经满足；npm 发布只是换一个来源。
+
 ## C. 每次发版的固定流程（本机已自动化）
 
 ```sh
