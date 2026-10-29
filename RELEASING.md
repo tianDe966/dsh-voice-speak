@@ -10,7 +10,7 @@
 2. 拉到最下方 **Danger Zone** → **Change repository visibility** → **Make public** → 按提示输入仓库名确认。
 3. 转公开后回来告诉我，我会做两件事：
    - 把 `README.md` 的安装说明从「本地 link」改为公开 clone 地址，并复查没有别处泄露本机路径；
-   - 用公开地址重新克隆一次，确认 `node --test` 仍 30/30。
+   - 用公开地址重新克隆一次，确认 `node --test` 仍 35/35。
 
 转公开前的自查（我已查过，记录在此）：
 - 仓库只含插件本体（`lib/`、`test/`、`README`、`CHANGELOG`、`LICENSE`、`cordis.patch.yml`、`package.json`）。
@@ -25,7 +25,7 @@
    ```sh
    cd D:\DSH_Project\plugin01\dsh-voice-speak
    npm pack --dry-run        # 预期 14 文件 / ~42 kB
-   node --test --test-isolation=none   # 预期 30/30
+   node --test --test-isolation=none   # 预期 35/35
    ```
 3. 登录完成后我执行 `npm publish`（包名 `dsh-voice-speak`，2026-10-29 查过未被占用）。
 4. 发布后校验：`npm view dsh-voice-speak version` 与 `npm install dsh-voice-speak` 装到干净目录再 `import` 出 `apply,inject,name`。

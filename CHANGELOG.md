@@ -18,7 +18,7 @@
 
 ### Verified
 
-- `node --test --test-isolation=none` 30/30；三条引擎各说一句的日志：
+- `node --test --test-isolation=none` 30/30（发布后补 5 条 worker 协议单测，现 35/35）；三条引擎各说一句的日志：
   - `engine=local voice=Xiaoxiao … audio_ms=2062 play_ms=3610 OK`
   - `engine=edge voice=zh-CN-XiaoxiaoNeural … synth_ms=1958 play_ms=5993 OK`
   - `engine=sapi device=resident voice=default audio_ms=2062 play_ms=3346 OK`

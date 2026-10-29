@@ -191,7 +191,7 @@ engine=local|edge|sapi voice=… pitch=… rate=… len=… audio_ms=… play_ms
 
 ```sh
 cd dsh-voice-speak
-node --test        # 30 项：触发判定 + 事件接线 + 静默路径，不需要出声
+node --test        # 35 项：触发判定 + 事件接线 + 静默路径 + worker 协议，不需要出声
 ```
 
 纯 ESM、无构建步骤、无第三方依赖。目录：
