@@ -6,7 +6,7 @@
 
 - **零第三方依赖**，纯 ESM JavaScript，无构建步骤
 - **仅 Windows**（语音与桌面气泡都依赖系统能力）
-- 本版本：`3.4.0`（版本演进见 [CHANGELOG.md](CHANGELOG.md)）
+- 本版本：`3.4.1`（版本演进见 [CHANGELOG.md](CHANGELOG.md)）
 
 ---
 
