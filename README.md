@@ -118,20 +118,31 @@ Get-Content (Join-Path $env:TEMP 'dsh-voice-speak.log') -Tail 5
 
 | 顺序 | 引擎 | 是否需要网络 | 说明 |
 | --- | --- | --- | --- |
-| 1 | 本地离线「晓晓」（SAPI） | 否 | 需另装微软自然语音 + SAPI 适配器，见下 |
-| 2 | Edge 在线自然音色 | 是 | `zh-CN-XiaoxiaoNeural`，零依赖手写 WebSocket 协议 |
-| 3 | Windows 内置语音 | 否 | 最后兜底，音色明显老一些，但一定出声 |
+| 1 | 本地离线「晓晓」（自带 helper） | 否 | 3.4.0 起走微软 Embedded Speech SDK，不注册 SAPI、不要管理员 |
+| 2 | 本地离线「晓晓」（SAPI 适配器） | 否 | 老路子，装了适配器的机器上作为 helper 的后备 |
+| 3 | Edge 在线自然音色 | 是 | `zh-CN-XiaoxiaoNeural`，零依赖手写 WebSocket 协议 |
+| 4 | Windows 内置语音 | 否 | 最后兜底，音色明显老一些，但一定出声 |
 
-默认调音：`pitch=+10Hz` / `rate=-4%`（本地 SAPI 用 SSML 的 `+10% / -4%` 对齐）。想换成自己的声线，只改 `lib/tts.js` 顶部三个常量，不动其它逻辑。
+默认调音：`pitch=+10Hz` / `rate=-4%`（本地引擎用 SSML 的 `+10% / -4%` 对齐）。想换成自己的声线，只改 `lib/tts.js` 顶部三个常量，不动其它逻辑。
 
 ### 可选：开启离线自然音色
 
-默认走 Edge 在线音色即可用。想要**断网也保持同一说话人**，需要在本机装：
+默认走 Edge 在线音色即可用。想要**断网也保持同一说话人**，需要在本机准备两样东西（都**不进仓库**，也不进 npm 包）：
 
-- 微软 Narrator 自然语音包 `Microsoft Xiaoxiao (Natural)`（微软签名 MSIX，解压即用）
-- [NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter)（MIT，把自然语音注册成 SAPI 引擎）
+1. **语音模型**：微软 Narrator 自然语音包 `Microsoft Xiaoxiao (Natural)`（微软签名 MSIX，解压即用）。
+2. **合成 SDK**：微软 Embedded Speech SDK 的 x64 运行文件（`Microsoft.CognitiveServices.Speech.core.dll`、`...extension.embedded.tts.dll`、`...onnxruntime.dll`、`...codec.dll`、`...csharp.dll` 加 VC 运行库），放在一个独立目录里。
 
-装上后 `System.Speech` 里会出现 `Microsoft Xiaoxiao`，插件会自动优先用它；找不到时自动回落，不影响使用。语音资产与适配器**不进仓库**，装法属于本机环境配置，按项目 README 与适配器文档操作即可。
+然后编译插件自带的 helper（只需要 .NET Framework 自带的 `csc.exe`，**不需要 Visual Studio 或 .NET SDK**）：
+
+```powershell
+node tools/build-tts-helper.mjs --sdk "D:\DSH_Project\TTS\SpeechSDK\win-x64"
+```
+
+产物是 11 KB 的 `bin/dsh-tts-helper.exe`（只有我们自己的代码，二进制不入库）。运行时它按需从 `--sdk` 目录加载微软的 DLL，从语音目录里**按固定算法还原模型自带的许可串**，再合成 24 kHz/16-bit/单声道 WAV 交给常驻播放进程。
+
+路径可用环境变量覆盖；找不到 helper 或 SDK 就自动回落到 SAPI 适配器，再回落到 Edge。
+
+> 说明：许可算法是从语音模型文件自身推导出来的（与开源适配器 [NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter) 的做法一致），属于本机自用的非官方用法，不是微软授权的分发方式——所以模型与 SDK 都不随插件分发。
 
 ## 环境变量
 
@@ -139,6 +150,9 @@ Get-Content (Join-Path $env:TEMP 'dsh-voice-speak.log') -Tail 5
 | --- | --- | --- |
 | `DSH_VOICE_SPEAK_ENGINE` | `auto`（默认）/ `local` / `edge` / `sapi` | 强制某一路引擎，跳过前面的顺序 |
 | `DSH_VOICE_SPEAK_FALLBACK` | `off` | 关掉事件驱动的自动播报，`say` 不受影响 |
+| `DSH_VOICE_SPEAK_SDK` | 目录 | helper 加载的 Speech SDK 目录，默认 `D:\DSH_Project\TTS\SpeechSDK\win-x64` |
+| `DSH_VOICE_SPEAK_VOICE_DIR` | 目录 | 语音模型目录，默认 `D:\DSH_Project\TTS\NaturalVoices\Xiaoxiao` |
+| `DSH_VOICE_SPEAK_NO_HELPER` | `1` | 禁用 helper，强制走 SAPI 适配器那一路（排错用） |
 
 ## 桌面气泡
 

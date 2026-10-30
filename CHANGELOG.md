@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-10-30
+
+### Added
+
+- **自带离线合成 helper，本地晓晓不再依赖 SAPI 注册**：新增 `tools/tts-helper/`（C# 源码）与 `tools/build-tts-helper.mjs`（用 .NET Framework 自带的 `csc.exe` 编译，不需要 VS 或 .NET SDK）。`bin/dsh-tts-helper.exe` 直接调用微软 Embedded Speech SDK 的离线合成能力，许可串由语音模型 `.bin` 文件按固定算法还原，因此**不需要 `regsvr32`、不需要管理员、不经过 PowerShell 与 `System.Speech`**。句子的合成从约 2 s 降到约 0.3 s。
+- `lib/tts.js` 的本地路径改成「helper 渲染 WAV → 常驻 worker 播放」：播放层（keep-alive、尾静音、`play_ms` 计量）一行未改，helper 失败时自动回落到 SAPI 适配器，再回落到 Edge。
+- 新增环境变量 `DSH_VOICE_SPEAK_SDK` / `DSH_VOICE_SPEAK_VOICE_DIR` / `DSH_VOICE_SPEAK_NO_HELPER`。
+
+### Fixed
+
+- **非 ASCII 输出路径**：Embedded Speech SDK 的本地文件写入在含中文的路径上直接报 `SPXERR_FILE_OPEN_FAILED`。helper 现在检测到非 ASCII 目标路径就改写到自带的 ASCII 临时目录，并在 stdout 里回报真实落地路径，调用方按回报路径播放并清理。
+- **worker 脚本长度上限**：PowerShell 脚本经 `-EncodedCommand` 传给 `powershell.exe`，受 Windows 命令行 32767 字符限制。实测 12232 字符源码 = 32620 编码后已 `spawn ENAMETOOLONG`；现在超过 31000 直接抛出可读错误，而不是一个进程起不来的怪错误。
+
 ## [3.3.1] - 2026-10-29
 
 ### Fixed
