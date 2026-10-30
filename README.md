@@ -6,7 +6,7 @@
 
 - **零第三方依赖**，纯 ESM JavaScript，无构建步骤
 - **仅 Windows**（语音与桌面气泡都依赖系统能力）
-- 本版本：`3.4.1`（版本演进见 [CHANGELOG.md](CHANGELOG.md)）
+- 本版本：`3.4.2`（版本演进见 [CHANGELOG.md](CHANGELOG.md)）
 
 ---
 
@@ -54,7 +54,7 @@ dsh plugin --profile web add link:D:/path/to/dsh-voice-speak
 >
 > ```sh
 > npm pack dsh-voice-speak --pack-destination D:/tmp
-> dsh plugin --profile web add file:D:/tmp/dsh-voice-speak-3.4.1.tgz
+> dsh plugin --profile web add file:D:/tmp/dsh-voice-speak-3.4.2.tgz
 > ```
 
 **确认装上了：**
