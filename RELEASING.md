@@ -18,7 +18,9 @@
 
 ## B. npm 发布（**由本人手动执行**，模型只准备命令）
 
-本机 npm 已有网页授权的登录态，`npm publish` **不需要输验证码**（2026-10-29 实测两次）。不要再去创建「Bypass 2FA」的 granular token——npm 正在弃用这类 token，用它会失败或只把版本挂起（见经验库 2026-10-29 条目）。
+本机 npm 的登录态**已不可靠**（2026-10-30 实测：`npm whoami` 先报 `EOTP`、后报 `E401 Unauthorized`，`~/.npmrc` 文件本身没动过）。不要再假设「本机登录态免验证码」——那是 2026-10-29 的旧结论。也不要创建「Bypass 2FA」的 granular token：npm 正在弃用这类 token，用它会失败或只把版本挂起（见经验库 2026-10-29 / 10-30 条目）。
+
+发布前先在本人的交互式终端里确认 `npm whoami` 能出账号名；出不来就先 `npm login`。
 
 **模型负责**：改版本号、同步 README/CHANGELOG、跑测试与打包预检、给出下面这段可直接粘贴的命令、发布后回查 registry。
 
@@ -63,12 +65,16 @@ dsh --profile scratchprobe2 --dump-config | findstr tool-voice-speak
 
 ```sh
 cd D:\DSH_Project\plugin01
-git tag -a v<版本> -m "<摘要>"
 git branch -D release-head
 git subtree split --prefix=dsh-voice-speak -b release-head
+git tag -a v<版本> -m "<摘要>" release-head   # 标签打在 split 提交上
 git push publish release-head:refs/heads/main
 git push publish v<版本>
 ```
+
+> **标签必须打在 `release-head`（split 提交）上，不要打在 `master` 的 monorepo 提交上。**
+> 打在 monorepo 提交上会把整个 plugin01 目录树（`AGENTS.md`、`接续简报.md`、`经验库/`、其他插件）
+> 一起推上公开仓库——2026-10-29 的 `v3.3.0`、`v3.3.1` 就是这么泄漏的，本版起改正。
 
 然后做静态备份 `D:\DSH_Project\backup\dsh-voice-speak-V<版本>`（插件目录、`经验库/`、`.gitattributes`、`.gitignore`、`VERSION.md`）。
 
