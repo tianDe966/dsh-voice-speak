@@ -6,7 +6,7 @@
 
 - **零第三方依赖**，纯 ESM JavaScript，无构建步骤
 - **仅 Windows**（语音与桌面气泡都依赖系统能力）
-- 本版本：`3.4.2`（版本演进见 [CHANGELOG.md](CHANGELOG.md)）
+- 本版本：`3.5.0`（版本演进见 [CHANGELOG.md](CHANGELOG.md)）
 
 ---
 
@@ -24,7 +24,7 @@
 ## ✨ 核心特性
 
 - 🗣️ **不念原文，说人话**：这句话由模型按你的偏好当场改成口语（「老大，报告出来了，回来看看」），不是把回答、文件路径、代码堆栈干巴巴念一遍。
-- 🐳 **鲸鱼娘桌面气泡**：浏览器最小化也看得见——独立桌面小窗、不抢焦点、按真实播放时长自动关闭。
+- 🐳 **鲸鱼娘桌面气泡**：浏览器最小化也看得见——独立桌面小窗、不抢焦点、按真实播放时长自动关闭。气泡左侧带**圆形头像**，默认是蓝发女仆「大肥鱼」，一条配置就能换成你自己的立绘。
 - ⚡ **断网也能极速出声**：四条路径逐级兜底（本地离线「晓晓」→ SAPI 适配器 → Edge 在线 → Windows 内置）。本地离线这一路实测合成 **0.3–0.5 秒**（旧 SAPI 路径同长度约 2 秒），想断网都难。
 - 🛡️ **只在关键节点开口**：卡住了、要你拍板、长任务完成——插件自己兜底播报，不依赖模型记不记得，也不废话连篇。
 - 🔀 **说完一句再说下一句**：多句排队逐条播，最多排 3 句，满了丢等待队列里最旧的那句；正在说的那句永不打断。
@@ -134,13 +134,30 @@ DSH 的语音插件大致已经分成三类，都很好，也都很明确：
 
 ## 桌面气泡
 
-说话时右下角出现一个小窗，标题「鲸鱼娘」，写的就是正在念的那句话。
+说话时右下角出现一个小窗，标题「鲸鱼娘」，左侧一张圆形头像，右边写的就是正在念的那句话。
 
 - 独立桌面窗口，浏览器最小化也在
 - `WS_EX_NOACTIVATE`，弹气泡不抢焦点，正在打的字不会被抢走
 - 贴右下角、按 DPI 真实工作区定位，任意缩放下不出界
 - 同一时刻只留一个气泡，后一句顶替前一句
 - 关闭时机取自真实播放时长，不是按字数估算
+
+### 换成你自己的头像
+
+气泡头像默认用包里那张 `assets/avatar.png`（大肥鱼）。想换成自己的角色，两步：
+
+1. 把图片放到任意一个**纯 ASCII 路径**下，例如 `D:\DSH_Project\xiaolan-assets\avatar.png`（含中文的路径 WPF 容易读不出来，尤其是 `C:\Users\你的中文名\` 这种）；
+2. 在 `~/.dsh/voice-speak.json` 里写这个路径：
+
+   ```json
+   { "avatar": "D:\\DSH_Project\\xiaolan-assets\\avatar.png" }
+   ```
+
+配置**每句话都会重读**，改完不用重启 dsh，下一句就换脸。也可以用环境变量 `DSH_VOICE_SPEAK_AVATAR` 直接指图片（优先级更高），两者都没配就走包内默认图。
+
+图片建议 **正方形、128 px 以上、边缘已经是圆形或愿意被裁成圆形**——气泡按 `UniformToFill` 填进正圆，非正方形会被裁掉两侧。找不到文件时气泡自动退回纯文字，不会报错也不会挡住说话。
+
+如果想让**对话界面里的每条消息**也带上同一张头像，那是皮肤插件的事，见下面的「搭配推荐」。
 
 ## 搭配推荐：dsh-remote-notify / dsh-channel-wechat
 
@@ -205,6 +222,7 @@ node tools/build-tts-helper.mjs --sdk "D:\DSH_Project\TTS\SpeechSDK\win-x64"
 | `DSH_VOICE_SPEAK_VOICE_DIR` | 目录 | 语音模型目录；默认 `D:\DSH_Project\TTS\NaturalVoices\Xiaoxiao`（同上） |
 | `DSH_VOICE_SPEAK_NO_HELPER` | `1` | 禁用 helper，强制走 SAPI 适配器那一路（排错用） |
 | `DSH_VOICE_SPEAK_NO_HOLD` | `1` | 关掉「播放期间让宿主等这句播完」的定时器（默认开，上限 18 s；只影响宿主要退出的场景） |
+| `DSH_VOICE_SPEAK_AVATAR` | 图片路径 | 气泡左侧头像；优先于 `~/.dsh/voice-speak.json` 的 `avatar` 字段。路径请用纯 ASCII |
 
 </details>
 
@@ -267,7 +285,7 @@ node --test        # 35 项：触发判定 + 事件接线 + 静默路径 + worke
 | `lib/triggers.js` | 自动播报判定、去重、静默窗、时长阈值 |
 | `lib/tts.js` | 播放层：队列 + 三引擎调度 + 日志 |
 | `lib/edge.js` | Edge TTS 客户端（TLS 握手、WebSocket 帧、`Sec-MS-GEC v2` token） |
-| `lib/pet-bridge.js` | 桌面气泡窗 |
+| `lib/pet-bridge.js` | 桌面气泡窗（含圆形头像的解析与绘制） |
 | `cordis.patch.yml` | 一行挂载声明 |
 
 `lib/tts.js` 里有两处不能改的工程约束：PowerShell 一律用 `-EncodedCommand`（不拼 `-Command` 字符串），播放子进程用 attached + `unref()` 而不是 `detached`。原因都记在仓库经验库里。

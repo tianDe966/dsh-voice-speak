@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-11-13
+
+### Added
+
+- **气泡左侧换成圆形头像**：原来是 56 px 方形贴图（`Image` 控件），现在是真正的正圆（WPF `Ellipse` + `ImageBrush`，`Stretch=UniformToFill`），带 1 px 冷色描边，任何非正方形图片都会被裁进圆里而不是压扁。
+- **头像可自定义**，解析顺序每句重算，改图不用重启宿主：① 环境变量 `DSH_VOICE_SPEAK_AVATAR` → ② `~/.dsh/voice-speak.json` 的 `avatar` 字段 → ③ 包内 `assets/avatar.png`。
+- 新增包内默认头像 `assets/avatar.png`（128 px 圆形，蓝发女仆「大肥鱼」）。原来那张 `assets/voice-cover.png` 是作者自用形象，**已从仓库移除**——第三方装到的是自己的默认图，不是作者的立绘。
+
+### Changed
+
+- `lib/pet-bridge.js` 新增 `resolveAvatarPath()`，导出的 `announce()` 签名与行为不变。
+- `package.json` 的 `files` 补上 `assets/avatar.png`（3.4.x 及以前 `assets/` 整个目录都不在包里，从 npm 装的用户其实一直拿不到气泡头像）。
+- README 新增「换成你自己的头像」小节，环境变量表补 `DSH_VOICE_SPEAK_AVATAR`。
+
+### Notes
+
+- 头像路径请用**纯 ASCII**：WPF 的 `Uri` 在含中文的路径上会读不出图（`C:\Users\中文名\` 这种最常见），而配置文件本身由 Node 读取，所以「配置里写路径、路径本身不带中文」这个组合能绕开该限制。
+
 ## [3.4.2] - 2026-10-30
 
 ### Changed
