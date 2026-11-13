@@ -13,33 +13,31 @@
    - 用公开地址重新克隆一次，确认 `node --test` 仍 35/35。
 
 转公开前的自查（我已查过，记录在此）：
-- 仓库只含插件本体（`lib/`、`test/`、`README`、`CHANGELOG`、`LICENSE`、`cordis.patch.yml`、`package.json`）。
+- 仓库只含插件本体（`lib/`、`test/`、`tools/`、`assets/avatar.png`、`README`、`CHANGELOG`、`RELEASING`、`LICENSE`、`cordis.patch.yml`、`package.json`）。
 - 不含 `~/.dsh/remote-notify.json`（QQ 授权码）、不含 `D:\DSH_Project\TTS` 语音资产、不含个人路径（`.gitignore` 已排除 `_probe/`、`*.log`）。
 
-## B. npm 发布（**由本人手动执行**，模型只准备命令）
+## B. npm 发布（**模型直接执行**）
 
-本机 npm 的登录态**已不可靠**（2026-10-30 实测：`npm whoami` 先报 `EOTP`、后报 `E401 Unauthorized`，`~/.npmrc` 文件本身没动过）。不要再假设「本机登录态免验证码」——那是 2026-10-29 的旧结论。也不要创建「Bypass 2FA」的 granular token：npm 正在弃用这类 token，用它会失败或只把版本挂起（见经验库 2026-10-29 / 10-30 条目）。
+本机 npm 有网页授权登录态，`npm publish` 不弹验证码（2026-11-13 实测发 3.5.0 一次通过，`npm whoami` = `tianshan123`）。2026-10-30 那条「登录态不可靠」的结论已过时，删掉。
 
-发布前先在本人的交互式终端里确认 `npm whoami` 能出账号名；出不来就先 `npm login`。
+**不要**创建「Bypass 2FA」的 granular token：npm 已弃用，用它只会把版本挂成 staged。
 
-**模型负责**：改版本号、同步 README/CHANGELOG、跑测试与打包预检、给出下面这段可直接粘贴的命令、发布后回查 registry。
+发布前先确认登录态：`npm whoami` 出不来账号名就先 `npm login`。
 
-**本人负责**：在 cmd 里执行（模型会在发布前把版本号填好）：
-
-```bat
-cd /d D:\DSH_Project\plugin01\dsh-voice-speak
-npm publish --access public
-```
-
-发布完成后告诉模型一声，模型会复核：
+**模型负责**：改版本号、同步 README/CHANGELOG、跑测试与打包预检、执行 `npm publish`、回查 registry、干净目录装一次验导出。
 
 ```powershell
 $env:npm_config_cache = "D:\DSH_Project\plugin01\_probe\tmp\npm-cache"
+cd D:\DSH_Project\plugin01\dsh-voice-speak
+npm publish --access public
+```
+
+**别只看输出里的 "Published" 字样**：2026-10-29 出现过「输出像成功、registry 其实没有这个版本」；2026-11-13 又见一次 —— registry 回 `202 Accepted` 后要异步处理**约 1 分钟**才可见，期间 `npm view` 是旧版本、直接 GET `<registry>/<pkg>/<version>` 也是 404。必须回查：
+
+```powershell
 npm view dsh-voice-speak versions --json --prefer-online
 npm view dsh-voice-speak dist-tags --json --prefer-online
 ```
-
-**别只看输出里的 "Published" 字样**：2026-10-29 出现过「输出像成功、registry 其实没有这个版本」的情况，必须回查 `versions` 与 `dist-tags`。
 
 ## B2. 可安装性自检（2026-10-29 实跑通过，任何一次发版后都可复跑）
 
