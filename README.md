@@ -21,6 +21,22 @@
 
 它说人话、不念代码路径；你不在屏幕前，它也会来找你。
 
+## 🆕 3.6.0 新增了什么
+
+**"说"这条线全齐了，顺手还能听音频文件。**
+
+| 能力 | 3.5.0 | 3.6.0 |
+|---|---|---|
+| 在对话里念一句 | `say` | `say`（不变） |
+| 把**整段长文本**合成成音频文件 | 得自己找外部脚本 | **`tools\voice-local.ps1`** 自带，出真 mp3，还能混进视频 |
+| **音频文件转文字** | 没有 | **`tools\stt-groq.ps1`**（Groq `whisper-large-v3-turbo`） |
+| 一次能念多长 | 合成超时 15 s ≈ **2200 字** | 60 s ≈ **9000 字** |
+| 语音资产怎么装 | README 里散着写 | **`tools\setup-voice-assets.ps1`** 一键体检 / 下载 / 校验 / 注册 |
+
+- **两个脚本进了包**：以前它们散在作者自己的工具目录里，别人装了也用不上。现在 `tools/` 自带，靠 `$PSScriptRoot` 自寻址，换机器不用改路径。
+- **念白上限 2200 → 9000 字**：`HELPER_TIMEOUT_MS` 从 15 s 提到 60 s（实测 **6.7 ms 合成 / 1 字**）。
+- **语音资产不再"只字不提"**：给了体检脚本 + 可执行的安装指令，并明确「微软的东西不进仓库」。
+
 ## 🆕 3.5.0 新增了什么
 
 气泡那张脸，从「一块方形贴图」变成真正的圆形头像，而且能换成你自己的角色。
@@ -43,6 +59,8 @@
 - ⚡ **断网也能极速出声**：四条路径逐级兜底（本地离线「晓晓」→ SAPI 适配器 → Edge 在线 → Windows 内置）。本地离线这一路实测合成 **0.3–0.5 秒**（旧 SAPI 路径同长度约 2 秒），想断网都难。
 - 🛡️ **只在关键节点开口**：卡住了、要你拍板、长任务完成——插件自己兜底播报，不依赖模型记不记得，也不废话连篇。
 - 🔀 **说完一句再说下一句**：多句排队逐条播，最多排 3 句，满了丢等待队列里最旧的那句；正在说的那句永不打断。
+- 🎬 **长文本直接出片**：`tools\voice-local.ps1` 把任意长度文本合成 wav / mp3，还能按时间戳混进视频（视频流直接 copy，不重编码）。开机动画的配音就是这么来的。
+- 📝 **也能听音频文件**：`tools\stt-groq.ps1` 把 mp3 / m4a / wav 转成文字（Groq `whisper-large-v3-turbo`），25 MB 以内都行，密钥走环境变量或 `~/.dsh/voice-speak.json`。
 
 > 插件本体只做两件事：一个 `say` 工具，一段「什么时候该说、怎么说」的系统提示词。其余判断留给模型——它知道你在忙别的、不一定盯着屏幕。
 
@@ -174,6 +192,19 @@ DSH 的语音插件大致已经分成三类，都很好，也都很明确：
 
 如果想让**对话界面里的每条消息**也带上同一张头像，那是皮肤插件的事，见下面的「搭配推荐」。
 
+## 搭配推荐：`@dsh-voice/voice`（实时麦克风识别）
+
+**强烈建议搭配使用**，两边职责不重叠：
+
+| | `dsh-voice-speak`（本插件） | `@dsh-voice/voice`（全双工） |
+|---|---|---|
+| 方向 | **说**：agent → 用户 | **听**：用户 → agent |
+| 触发 | 模型决定开口 | 用户按 `Ctrl+Shift+V` 说话 |
+| 引擎 | 本地离线晓晓 / SAPI / Edge 兜底 | 浏览器流式 ASR + Silero VAD + 本地 whisper |
+| 附加 | 桌面气泡、事件兜底、音频文件合成与转写 | 语音审批（说「允许 / 拒绝」）、实时字幕、开口打断 |
+
+一边管出、一边管进，两个装在一起才是一个完整的语音会话。本插件不评价全双工的取舍，只说明分工。
+
 ## 搭配推荐：dsh-remote-notify / dsh-channel-wechat
 
 如果你会把电脑扔下不管、改用手机或微信继续对话，建议同时安装配套插件 **`dsh-remote-notify`**：
@@ -186,6 +217,71 @@ DSH 的语音插件大致已经分成三类，都很好，也都很明确：
 再配上 **`dsh-channel-wechat`** 通道，汇报还能直接发到手机微信——人在路上也知道进度，甚至能让它给你讲个故事……啊呸，汇报工作。
 
 ---
+
+## 为什么不再用另外两个语音插件
+
+作者本机实测（2026-11-14，Windows 11 / Edge 157 / 有代理）。把踩过的坑摆出来，省得你也走一遍。
+
+### `dsh-voice`（0.3.7）
+
+- 5 个工具里 **3 个依赖 edge-tts**：`voice_tts` / `voice_list` / `voice_preview`。
+- 实测**全部 403**：直连、走代理、`Sec-MS-GEC-Version` 从 `143` 改到 `157.0.4341.46`、UA 同步升到 `Edg/157` —— 全是 403。微软在协议层拒绝，**与网络无关**（`curl` 直连该域名返 400，说明 TCP/TLS 是通的；`ws` 走同一代理连通用 WSS 站点可以 OPEN）。
+- 剩下 `voice_stt`（Groq）能用，但本插件已用 `tools\stt-groq.ps1` 覆盖，不必每轮背着 5 个工具的 schema。
+- **本插件的处理**：从 `bundles` 移除，包本体留在 `dependencies`，想装回来写回一行即可。
+
+### `@motong/dsh-voice`（0.4.3）
+
+- `dependencies` 只声明了 `ws`，但以 `link:` 挂载时 pnpm 不会进目录装依赖 → `Cannot find package 'ws'`，插件直接起不来。
+- 手工补上 `ws` 之后，它的朗读同样走 edge-tts，**同样 403**。
+- 源码里没有 `proxyUrl` 支持（grep 零命中），连绕的路都没有。
+- **本插件的处理**：已删除。
+
+> 你的环境能跑通、或者觉得哪条写错了，欢迎去 [Issues](https://github.com/tianDe966/dsh-voice-speak/issues) 提，乐意改。
+
+## 🧩 语音资产（微软语音包）怎么落地
+
+**本仓库不含任何微软资产** —— SDK 和 Narrator 自然语音包都是微软的知识产权，随插件分发属于侵权，而且微软随时可能下架。所以这里只给「怎么接线」，资产留在你自己的机器上。
+
+| 组件 | 干什么 | 从哪来 |
+|---|---|---|
+| Microsoft Cognitive Services Speech SDK（Embedded Speech） | 离线合成引擎 | 微软官方 |
+| `MicrosoftWindows.Voice.zh-CN.Xiaoxiao.1_1.0.9.0_x64`（MSIX） | 晓晓自然语音本体 | 微软商店包（NVDA 中文站等镜像有原版） |
+| [NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter) v0.2.11 | 把 Narrator 语音暴露成 SAPI voice | GitHub Releases |
+
+### 体检
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup-voice-assets.ps1 -VerifyOnly
+```
+
+### 安装（脚本代劳）
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup-voice-assets.ps1 `
+  -Msix "D:\Downloads\MicrosoftWindows.Voice.zh-CN.Xiaoxiao.1_1.0.9.0_x64__cw5n1h2txyewy.Msix"
+```
+
+脚本会校验 SHA256（默认值就是微软原版那个哈希）→ 解 MSIX → 写 `HKCU` 配置 → 提示你用管理员 `regsvr32` 注册适配器 → 复查（`SpeechSynthesizer` 里能看到 `Xiaoxiao` 才算成）。
+
+### 把这段贴给你家 AI
+
+让 AI 替你把环境装好，省得自己一条条敲：
+
+```
+请帮我在 Windows 上装好 dsh-voice-speak 的本地离线语音资产：
+1. 检查 D:\DSH_Project\TTS 下是否有
+   SpeechSDK\win-x64\Microsoft.CognitiveServices.Speech.extension.embedded.tts.dll、
+   NaturalVoices\Xiaoxiao\MSTTSLocZhCN.dat、
+   NaturalVoiceSAPIAdapter\x64\NaturalVoiceSAPIAdapter.dll；
+2. 缺哪样就告诉我该从哪下载。MSIX 期望 SHA256 =
+   E069D67BEC8443AECFF49FBB971F46E72094F9A56177FD3C94734EF164542EDF；
+3. 跑 <插件目录>\tools\setup-voice-assets.ps1 -VerifyOnly 看体检结果；
+4. 需要注册 DLL 时用管理员权限 regsvr32，x64 和 x86 各一条；
+5. 最后用 PowerShell 的 System.Speech 列出已安装语音，确认其中出现 Xiaoxiao。
+全程不要装非官方来源的二进制，所有路径保持全 ASCII。
+```
+
+**兜底顺序**：本地晓晓 → SAPI 适配器 → Edge 在线 → Windows 内置 Huihui。前两条挂了会自动往下掉，不会没声。
 
 ## 进阶配置
 

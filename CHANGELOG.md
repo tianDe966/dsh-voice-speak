@@ -4,6 +4,29 @@
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-11-14
+
+「说」这条线补齐：能出音频文件了，也能把音频转成文字了。
+
+### Added
+
+- **`tools\voice-local.ps1`**：把任意长度文本合成语音文件。输出扩 `.mp3` 会真用 ffmpeg 转码（3.5.0 之前的同名外部脚本只改后缀、内容还是 wav）；给 `-Video` 还能按 `-DelayMs` 把配音混进视频，视频流直接 copy。`-Rate` / `-Pitch` / `-Atempo` 可调。
+- **`tools\stt-groq.ps1`**：音频文件转文字，走 Groq `whisper-large-v3-turbo`。密钥按 `-Key` → `DSH_VOICE_ASR_KEY` → `GROQ_API_KEY` → `~/.dsh/voice-speak.json` 的 `groqApiKey` → `cordis.patch.yml` 的 `asrApiKey` 逐级取；代理自动读系统设置；超过 25 MB 直接拦住并提示压缩命令。
+- **`tools\setup-voice-assets.ps1`**：本地语音资产体检 / 下载 / 校验 / 注册。`-VerifyOnly` 只体检；给 `-Msix` 才真装；SHA256 默认值就是微软原版 MSIX 那个哈希；非管理员时打印需要执行的两条 `regsvr32`。
+- README 新增三节：「为什么不再用另外两个语音插件」「语音资产（微软语音包）怎么落地」「搭配推荐：`@dsh-voice/voice`」。
+
+### Changed
+
+- **`HELPER_TIMEOUT_MS` 15_000 → 60_000**：一次能念的上限从约 2200 字提到约 9000 字（实测 6.7 ms 合成 / 1 字）。
+- **两个脚本自寻址**：`$plugin` 不再硬编码 `~/.dsh/profiles/web/node_modules/dsh-voice-speak`，改为 `DSH_VOICE_SPEAK_HOME` → 脚本所在包的上一级 → 旧路径逐级回退。装到 npm 里、克隆到任意目录都能直接跑。
+- README 的「核心特性」补两条（长文本出片、音频转写），「3.6.0 新增了什么」置于 3.5.0 之前。
+
+### Notes
+
+- 微软的 SDK 与 Narrator 语音包**不进仓库**：属于微软资产，随包分发构成侵权，也有被下架的风险。本仓库只提供接线方式与校验值。
+- edge-tts 在本机环境实测 **403**（协议层拒绝，非网络问题），所以本地离线晓晓是唯一可靠的第一优先级引擎；`dsh-voice` 与 `@motong/dsh-voice` 已因此停用，理由写在 README。
+
+
 ## [3.5.0] - 2026-11-13
 
 ### Added
