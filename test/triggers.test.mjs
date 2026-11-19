@@ -166,3 +166,56 @@ test('remote mode silences every automatic line', () => {
   triggers.noteSpoken()
   assert.deepEqual(spoken, [])
 })
+
+/** A controller whose sink is async, like the real plugin's `speak`. */
+function mountAsync(outcome) {
+  let clock = 1_000_000
+  const spoken = []
+  const triggers = createSpeechTriggers({
+    speak: (text) => {
+      spoken.push(text)
+      return Promise.resolve(outcome)
+    },
+    now: () => clock,
+    isSilenced: () => false,
+  })
+  return {
+    triggers,
+    spoken,
+    advance(ms) {
+      clock += ms
+    },
+  }
+}
+
+test('a stood-down async speech leaves the quiet window closed', async () => {
+  const { triggers, spoken, advance } = mountAsync('suppressed')
+  triggers.onApproval('s1', { id: 'a1' })
+  await Promise.resolve()
+  advance(1_000)
+  triggers.onAsk('s1', { callId: 'c1' })
+  assert.deepEqual(spoken, ['老大，有个操作要你批一下。', '老大，有个问题要你定。'])
+})
+
+test('a spoken async speech opens the quiet window', async () => {
+  const { triggers, spoken } = mountAsync('spoken')
+  triggers.onApproval('s1', { id: 'a1' })
+  await Promise.resolve()
+  triggers.onAsk('s1', { callId: 'c1' })
+  assert.deepEqual(spoken, ['老大，有个操作要你批一下。'])
+})
+
+test('an in-flight speech counts as recent until it settles', () => {
+  const spoken = []
+  const triggers = createSpeechTriggers({
+    speak: (text) => {
+      spoken.push(text)
+      return new Promise(() => {})
+    },
+    now: () => 1_000_000,
+    isSilenced: () => false,
+  })
+  triggers.onApproval('s1', { id: 'a1' })
+  triggers.onAsk('s1', { callId: 'c1' })
+  assert.deepEqual(spoken, ['老大，有个操作要你批一下。'])
+})

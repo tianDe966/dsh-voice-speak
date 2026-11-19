@@ -2,7 +2,23 @@
 
 本文件记录 `dsh-voice-speak` 的对外变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [3.7.0] - 2026-11-15
+
+### Added
+
+- **全双工互斥（`lib/duplex-guard.js`）**：`@dsh-voice/voice` 一旦有活跃的全双工语音会话，本插件的 `say` 与所有自动播报**让路**——不出声，也不弹气泡，只写一行日志。理由：voice 自己会念 `agent/assistant-stream` 的每一句，它不知道 `say` 存在，两边同时开口就是叠音。
+  - 判据是 voice 自己的 `GET /voice/status`（裸请求即 200，不需要 token），`sessions` 非空即有会话在线；端口从 `webServer` 服务取，取不到回退 `~/.dsh/tools/dsh-last-url.txt`。
+  - 任何失败（无该服务、voice 未装、404、250 ms 超时、非 JSON）一律按「未开全双工」处理：voice 坏掉不能反过来把正常说话也弄哑。
+  - 判定结果缓存 1.2 s；`DSH_VOICE_SPEAK_DUPLEX_GUARD=0` 可整体关掉。
+  - 闸放在 `speak()` 而不是 `say` 工具里，因此 `say`、自动触发器、后台任务播报三条路径一起覆盖。`say` 的返回值多一个 `reason`（`remote-mode` / `full-duplex`），模型能看出是哪种静默。
+
+### Changed
+
+- `speak()` 改为 async（等互斥判完再出声），自动触发器的播报因此落在下一个微任务；测试补 `settle()` 等待。
+
+### Fixed
+
+- **自动播报的静默窗口只在真出声时开**：`lib/triggers.js` 的 `say()` 以前在 `speak()` 返回前就记 `lastSpokenAt`，于是「让路」和「失败」也算说过，全双工一结束就有十几秒该说而没说。现在 `speak()` 返回 Promise 时改为等结算，只有 `'spoken'` 才算；结算前按「刚说过」处理，避免同一事件连发两句（`sinceSpeech()` 统一三处阈值判定）。
 
 ## [3.6.0] - 2026-11-14
 

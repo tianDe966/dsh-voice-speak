@@ -74,6 +74,31 @@ git push publish v<版本>
 > 打在 monorepo 提交上会把整个 plugin01 目录树（`AGENTS.md`、`接续简报.md`、`经验库/`、其他插件）
 > 一起推上公开仓库——2026-10-29 的 `v3.3.0`、`v3.3.1` 就是这么泄漏的，本版起改正。
 
+### C.1 当 `git push` 报 `non-fast-forward`
+
+**现象**（2026-11-15 实测）：`git subtree split` 出来的提交与远端 `main` 的提交 hash 不同，`7e4c86b` 不在新链上，直接 `git push publish release-head:refs/heads/main` 会被拒。两边的**树是一样的**（`git rev-parse <c>^{tree}` 相等），只是提交对象不同——历史上某次发布用了手搓 `commit-tree`，父提交/时间戳与 `subtree split` 不同，于是分叉。
+
+**判据**：`git merge-base --is-ancestor $(git ls-remote publish main | cut -f1) release-head` 非 0 → 分叉。
+
+**解法**：不要 `--force`（会改写公开历史）。在**远端 HEAD 之上**重建一个提交，树取 split 提交的树：
+
+```sh
+cd D:\DSH_Project\plugin01
+# 1) 取 split 提交的三样东西：树、原提交说明
+git rev-parse 'release-head^{tree}'
+git log -1 --format=%B release-head > ..\_tmp\rel-msg.txt      # 注意 PowerShell 重定向会写 UTF-16，用 node 写
+# 2) 以远端 HEAD 为父重建
+git commit-tree <tree> -p <远端 main 的 hash> -F ..\_tmp\rel-msg.txt
+# 3) 打标签并推送这个新提交
+git tag -a v<版本> -m "<摘要>" <新提交>
+git push publish <新提交>:refs/heads/main
+git push publish v<版本>
+```
+
+验收：`git rev-parse <新提交>^` 等于远端旧 `main`；`git rev-parse '<新提交>^{tree}'` 等于 `release-head^{tree}`；推送后 `git ls-remote publish main` 变成新提交。这样远端全程快进，标签指向 3.7.0 的树而不是整个 monorepo。
+
+> 中文提交说明**不要用 PowerShell 的 `>` / `Out-File` 落地**：前者写 UTF-16LE、后者写 BOM，`commit-tree -F` 读进去就是乱码或首个 BOM 字符。用 `node -e "fs.writeFileSync(p, out, 'utf8')"`，或 `git log -1 --format=%B` 直接经 node 转写。
+
 然后做静态备份 `D:\DSH_Project\backup\dsh-voice-speak-V<版本>`（插件目录、`经验库/`、`.gitattributes`、`.gitignore`、`VERSION.md`）。
 
 ## D. 发布前最容易漏的四件事

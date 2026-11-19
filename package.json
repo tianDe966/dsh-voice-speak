@@ -1,6 +1,6 @@
 {
   "name": "dsh-voice-speak",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "description": "DeepSeek Harness plugin: an agent-facing say tool that makes the agent speak out loud (local offline Xiaoxiao, Edge TTS, or Windows built-in), a desktop bubble with a circular avatar, event-driven auto announcements, plus CLI tools to render long text to wav/mp3 and transcribe audio files.",
   "type": "module",
   "main": "lib/index.js",

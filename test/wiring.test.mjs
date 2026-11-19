@@ -6,12 +6,21 @@ import { join } from 'node:path'
 import { apply, name } from '../lib/index.js'
 
 /**
+ * Let the async full-duplex interlock settle.
+ *
+ * `speak` awaits the interlock before it speaks, so a trigger's line lands on a
+ * later microtask than the event that produced it; an event-driven test has to
+ * yield once before counting what was spoken.
+ */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+/**
  * Load the plugin against a fake cordis context and capture speech.
  *
  * The marker path defaults to a fresh temp file so no test can ever touch the
  * real `~/.dsh/rules/remote-mode.on`.
  */
-function mount({ isSilenced, markerPath, wechatWorkspace } = {}) {
+function mount({ isSilenced, markerPath, wechatWorkspace, duplex } = {}) {
   const spoken = []
   const handlers = new Map()
   let tool
@@ -53,7 +62,13 @@ function mount({ isSilenced, markerPath, wechatWorkspace } = {}) {
     },
   }
   const marker = markerPath ?? join(mkdtempSync(join(tmpdir(), 'voice-speak-')), 'remote-mode.on')
-  const options = { speak: (text) => spoken.push(text), markerPath: marker }
+  const options = {
+    speak: (text) => spoken.push(text),
+    markerPath: marker,
+    // No test may reach the real /voice/status endpoint, so the interlock is
+    // always injected: "not duplex" unless the test says otherwise.
+    duplex: duplex ?? { isActive: async () => false, resolveBaseUrl: () => null },
+  }
   if (isSilenced !== undefined) options.isSilenced = isSilenced
   if (wechatWorkspace !== undefined) options.wechatWorkspace = wechatWorkspace
   apply(ctx, options)
@@ -100,22 +115,25 @@ test('say hands the sentence to the speaker', async () => {
   assert.deepEqual(m.spoken, ['老大，测试。'])
 })
 
-test('pending approval speaks automatically', () => {
+test('pending approval speaks automatically', async () => {
   const m = mount()
   m.emit({ type: 'approval/asked', data: { id: 'a1', toolName: 'bash', callId: 'c1' } })
+  await settle()
   assert.deepEqual(m.spoken, ['老大，有个操作要你批一下。'])
 })
 
-test('ask_user_question speaks automatically', () => {
+test('ask_user_question speaks automatically', async () => {
   const m = mount()
   m.emit({ type: 'tool/call', data: { name: 'ask_user_question', callId: 'c9' } })
+  await settle()
   assert.deepEqual(m.spoken, ['老大，有个问题要你定。'])
 })
 
-test('error turn speaks automatically', () => {
+test('error turn speaks automatically', async () => {
   const m = mount()
   m.emit({ type: 'turn/start', data: { turn: 1 } })
   m.emit({ type: 'turn/end', data: { turn: 1, reason: { kind: 'error' } } })
+  await settle()
   assert.deepEqual(m.spoken, ['老大，这轮出错了。'])
 })
 
@@ -141,11 +159,12 @@ test('scheduled (automation) turns never speak', () => {
   assert.deepEqual(m.spoken, [])
 })
 
-test('a normal message clears the automation marker', () => {
+test('a normal message clears the automation marker', async () => {
   const m = mount()
   m.emit({ type: 'user/message', data: { source: { kind: 'schedule' } } })
   m.emit({ type: 'user/message', data: { source: { kind: 'user' } } })
   m.emit({ type: 'approval/asked', data: { id: 'a3' } })
+  await settle()
   assert.deepEqual(m.spoken, ['老大，有个操作要你批一下。'])
 })
 
@@ -158,10 +177,37 @@ test('remote mode silences say and automatic alerts', async () => {
   m.emit({ type: 'turn/start', data: { turn: 1 } })
   m.emit({ type: 'turn/end', data: { turn: 1, reason: { kind: 'error' } } })
   assert.deepEqual(m.spoken, [])
-  assert.deepEqual(result, { status: 'muted', text: '老大，测试。' })
+  assert.deepEqual(result, { status: 'muted', text: '老大，测试。', reason: 'remote-mode' })
   assert.deepEqual(m.tool.output.render({}, result), [
     { type: 'text', text: '已静默（远程模式），没有出声' },
   ])
+})
+
+test('a live full-duplex session makes say step aside', async () => {
+  const m = mount({ duplex: { isActive: async () => true, resolveBaseUrl: () => null } })
+  const result = await m.tool.execute({ text: '老大，测试。' })
+  assert.deepEqual(m.spoken, [])
+  assert.deepEqual(result, { status: 'muted', text: '老大，测试。', reason: 'full-duplex' })
+  assert.deepEqual(m.tool.output.render({}, result), [
+    { type: 'text', text: '已让路（全双工语音会话进行中，由 voice 自己念），没有出声' },
+  ])
+})
+
+test('automatic alerts step aside during a full-duplex session', async () => {
+  const m = mount({ duplex: { isActive: async () => true, resolveBaseUrl: () => null } })
+  m.emit({ type: 'approval/asked', data: { id: 'a1' } })
+  // `speak` is async now, so the trigger's line settles on a later microtask.
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(m.spoken, [])
+})
+
+test('speech is normal again once the full-duplex session ends', async () => {
+  let live = true
+  const m = mount({ duplex: { isActive: async () => live, resolveBaseUrl: () => null } })
+  assert.equal((await m.tool.execute({ text: '第一句。' })).status, 'muted')
+  live = false
+  assert.equal((await m.tool.execute({ text: '第二句。' })).status, 'queued')
+  assert.deepEqual(m.spoken, ['第二句。'])
 })
 
 test('a desktop message releases a stale remote-mode marker', async () => {
@@ -198,7 +244,7 @@ test('a custom WeChat workspace still keeps the marker', () => {
   assert.equal(existsSync(m.markerPath), false)
 })
 
-test('long unawaited job settlement speaks', () => {
+test('long unawaited job settlement speaks', async () => {
   const m = mount()
   const finishedAt = Date.now()
   m.settleJob({
@@ -212,6 +258,7 @@ test('long unawaited job settlement speaks', () => {
       status: 'completed',
     },
   })
+  await settle()
   assert.deepEqual(m.spoken, ['老大，后台任务跑完了。'])
 })
 

@@ -6,7 +6,7 @@
 
 - **零第三方依赖**，纯 ESM JavaScript，无构建步骤
 - **仅 Windows**（语音与桌面气泡都依赖系统能力）
-- 本版本：`3.5.0`（版本演进见 [CHANGELOG.md](CHANGELOG.md)）
+- 本版本：`3.7.0`（版本演进见 [CHANGELOG.md](CHANGELOG.md)）
 
 ---
 
@@ -20,6 +20,20 @@
 ```
 
 它说人话、不念代码路径；你不在屏幕前，它也会来找你。
+
+## 🆕 3.7.0 新增了什么
+
+**跟全双工语音同处一室时不再抢话，而且不会因为"让路"哑掉下一句。**
+
+| 情形 | 3.6.0 | 3.7.0 |
+|---|---|---|
+| `@dsh-voice/voice` 的全双工会话进行中 | `say` 与它同时开口，一句话两个引擎念 | `say` 与所有自动播报**自动让路**，只写一行日志 |
+| 全双工刚结束 | 只说了没出声的句子也算"说过"，十几秒内该说的不说 | 只有真出声才开静默窗口 |
+| 模型能看到什么 | `{status:"muted"}` | 多一个 `reason`：`remote-mode` / `full-duplex` |
+
+- 判据是 voice 自己的 `GET /voice/status`（`sessions` 非空即在线），任何失败都按"未开全双工"处理——voice 坏掉不能把正常说话也弄哑。
+- 闸放在 `speak()` 而不是 `say` 工具，所以工具调用、自动触发、后台任务播报三条路径一起覆盖。
+- `DSH_VOICE_SPEAK_DUPLEX_GUARD=0` 可整体关掉。
 
 ## 🆕 3.6.0 新增了什么
 
@@ -198,12 +212,20 @@ DSH 的语音插件大致已经分成三类，都很好，也都很明确：
 
 | | `dsh-voice-speak`（本插件） | `@dsh-voice/voice`（全双工） |
 |---|---|---|
-| 方向 | **说**：agent → 用户 | **听**：用户 → agent |
+| 方向 | **说**：agent → 用户 | **听 + 说**：用户 ⇄ agent |
 | 触发 | 模型决定开口 | 用户按 `Ctrl+Shift+V` 说话 |
-| 引擎 | 本地离线晓晓 / SAPI / Edge 兜底 | 浏览器流式 ASR + Silero VAD + 本地 whisper |
+| 引擎 | 本地离线晓晓（Embedded Speech SDK）/ SAPI / Edge 兜底 | 流式 ASR（sherpa-onnx zipformer 中英）+ Silero VAD + Kokoro / Matcha / VITS 本地 TTS |
 | 附加 | 桌面气泡、事件兜底、音频文件合成与转写 | 语音审批（说「允许 / 拒绝」）、实时字幕、开口打断 |
 
 一边管出、一边管进，两个装在一起才是一个完整的语音会话。本插件不评价全双工的取舍，只说明分工。
+
+**两边的嘴不会打架**：`@dsh-voice/voice` 一旦有活跃的全双工会话，本插件就自动让路——`say` 和所有自动播报都不出声、也不弹气泡（它自己会念 `agent/assistant-stream` 的每一句，它看不到 `say` 的存在）。判据是它自己的 `GET /voice/status`，`sessions` 非空即在全双工中；该请求失败一律按「未开全双工」处理，所以 voice 没装、卸了、或者坏了，都不影响本插件正常说话。想手动确认：
+
+```powershell
+curl http://127.0.0.1:3080/voice/status     # {"ready":false,"provider":"none","sessions":[]}
+```
+
+`DSH_VOICE_SPEAK_DUPLEX_GUARD=0` 可整体关掉互斥。
 
 ## 搭配推荐：dsh-remote-notify / dsh-channel-wechat
 
